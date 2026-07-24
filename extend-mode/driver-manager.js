@@ -1,27 +1,24 @@
 /**
  * NexaScreen - extend-mode/driver-manager.js
  * -----------------------------------------------------------------------
- * Manages the lifecycle of the bundled Indirect Display Driver (IDD)
- * used to create a virtual "Screen 2" for Extend Mode. This module does
- * NOT implement a driver itself — writing a signed Windows kernel-mode
- * IDD from scratch is a separate, multi-week WDK project outside the
- * scope of an Electron app. Instead it drives an already-signed,
- * open-source IDD package (e.g. virtual-display-rs, or Amyuni
- * usbmmidd_v2) that you place under /driver at build time.
+ * Manages installation status of the bundled Windows virtual display
+ * driver. Targets VirtualDrivers/Virtual-Display-Driver
+ * (https://github.com/VirtualDrivers/Virtual-Display-Driver), which is
+ * properly code-signed (SignPath.io) - so, unlike some other IDD
+ * projects, Windows test-signing mode is NOT required on typical x64
+ * systems (only some ARM64 + Windows 11 24H2+ configurations may need
+ * it - see the driver's own docs if that applies to you).
  *
- * Expected /driver contents (place these yourself - see README):
- *   driver/VirtualDisplayDriver.inf
- *   driver/VirtualDisplayDriver.cat
- *   driver/VirtualDisplayDriver.sys / .dll
- *   driver/vdd-ctl.exe        <- CLI/companion binary used to add/remove
- *                                 virtual monitors at runtime without a
- *                                 reboot (name depends on which driver
- *                                 project you bundle; adjust CLI args in
- *                                 virtual-monitor-control.js to match).
+ * Control happens via the driver's official "Community Scripts"
+ * PowerShell collection, NOT a generic vdd-ctl.exe (that was wrong in
+ * an earlier version of this file). Place these files under
+ * /driver/scripts (see driver/README.md):
  *
- * All privileged operations (install/uninstall/enable test-signing) use
- * sudo-prompt so Windows shows a native UAC dialog - nothing here runs
- * silently with elevated rights behind the user's back.
+ *   driver/scripts/virtual-driver-manager.ps1   <- install/uninstall/status/enable/disable
+ *   driver/scripts/toggle-VDD.ps1                <- quick enable/disable toggle
+ *   driver/scripts/changeres-VDD.ps1             <- change virtual display resolution
+ *
+ * Source: https://github.com/VirtualDrivers/Virtual-Display-Driver/tree/master/Community%20Scripts
  * -----------------------------------------------------------------------
  */
 
@@ -30,80 +27,74 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const sudoPrompt = require('sudo-prompt');
 
-const DRIVER_DIR = path.join(process.resourcesPath || path.join(__dirname, '..'), 'driver');
-const INF_NAME = 'VirtualDisplayDriver.inf';
+const SCRIPTS_DIR = path.join(process.resourcesPath || path.join(__dirname, '..'), 'driver', 'scripts');
+const MANAGER_SCRIPT = path.join(SCRIPTS_DIR, 'virtual-driver-manager.ps1');
 
-function driverFilesPresent() {
-  return fs.existsSync(path.join(DRIVER_DIR, INF_NAME));
+function scriptsPresent() {
+  return fs.existsSync(MANAGER_SCRIPT);
 }
 
-/** Runs `bcdedit /enum` and checks whether Windows test-signing mode is on.
- *  Unsigned/test-signed IDD drivers refuse to load unless this is enabled.
- */
-function isTestSigningEnabled() {
-  return new Promise((resolve) => {
-    const p = spawn('bcdedit', ['/enum']);
-    let out = '';
-    p.stdout.on('data', (d) => (out += d.toString()));
-    p.on('error', () => resolve(false));
-    p.on('close', () => resolve(/testsigning\s+Yes/i.test(out)));
-  });
-}
-
-/** Enables test-signing mode. Requires a reboot to take effect - always
- *  surface that requirement to the user before calling this. */
-function enableTestSigning() {
+/** Runs a PowerShell script with -ExecutionPolicy Bypass and returns stdout. */
+function runPowerShellScript(scriptPath, args = []) {
   return new Promise((resolve, reject) => {
-    sudoPrompt.exec('bcdedit /set testsigning on', { name: 'NexaScreen' }, (err) =>
-      err ? reject(err) : resolve()
-    );
-  });
-}
-
-function isDriverInstalled() {
-  return new Promise((resolve) => {
-    const p = spawn('pnputil', ['/enum-drivers']);
+    const p = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, ...args]);
     let out = '';
+    let errOut = '';
     p.stdout.on('data', (d) => (out += d.toString()));
-    p.on('error', () => resolve(false));
-    p.on('close', () => resolve(out.includes('VirtualDisplayDriver')));
+    p.stderr.on('data', (d) => (errOut += d.toString()));
+    p.on('error', reject);
+    p.on('close', (code) => {
+      if (code === 0) resolve(out.trim());
+      else reject(new Error(`${path.basename(scriptPath)} exited with code ${code}: ${errOut || out}`));
+    });
   });
 }
 
+/** Uses `-Action status -Json` to check whether the driver is installed/enabled.
+ *  Falls back to { installed: false, enabled: false } if the script or
+ *  driver isn't present yet, rather than throwing - status checks should
+ *  never crash the Host UI. */
+async function getDriverStatus() {
+  if (!scriptsPresent()) {
+    return { scriptsPresent: false, installed: false, enabled: false };
+  }
+  try {
+    const out = await runPowerShellScript(MANAGER_SCRIPT, ['-Action', 'status', '-Json']);
+    const jsonStart = out.indexOf('{');
+    const parsed = jsonStart >= 0 ? JSON.parse(out.slice(jsonStart)) : {};
+    return {
+      scriptsPresent: true,
+      installed: !!(parsed.Installed || parsed.installed),
+      enabled: !!(parsed.Enabled || parsed.enabled)
+    };
+  } catch (err) {
+    return { scriptsPresent: true, installed: false, enabled: false, error: err.message };
+  }
+}
+
+/** Installs the driver. Triggers one UAC prompt (the script self-elevates). */
 function installDriver() {
-  if (!driverFilesPresent()) {
+  if (!scriptsPresent()) {
     return Promise.reject(
       new Error(
-        `Driver files not found in ${DRIVER_DIR}. Download the virtual display driver release and place its files there first (see README > Extend Mode setup).`
+        `Community Scripts not found in ${SCRIPTS_DIR}. Copy them from the driver release first (see driver/README.md).`
       )
     );
   }
-  const infPath = path.join(DRIVER_DIR, INF_NAME);
-  return new Promise((resolve, reject) => {
-    sudoPrompt.exec(`pnputil /add-driver "${infPath}" /install`, { name: 'NexaScreen' }, (err, stdout) =>
-      err ? reject(err) : resolve(String(stdout || ''))
-    );
-  });
+  return runPowerShellScript(MANAGER_SCRIPT, ['-Action', 'install']);
 }
 
 function uninstallDriver() {
-  return new Promise((resolve, reject) => {
-    sudoPrompt.exec(
-      `pnputil /delete-driver ${INF_NAME} /uninstall /force`,
-      { name: 'NexaScreen' },
-      (err) => (err ? reject(err) : resolve())
-    );
-  });
+  if (!scriptsPresent()) return Promise.resolve();
+  return runPowerShellScript(MANAGER_SCRIPT, ['-Action', 'uninstall', '-Silent']);
 }
 
 module.exports = {
-  DRIVER_DIR,
-  driverFilesPresent,
-  isTestSigningEnabled,
-  enableTestSigning,
-  isDriverInstalled,
+  SCRIPTS_DIR,
+  scriptsPresent,
+  getDriverStatus,
   installDriver,
-  uninstallDriver
+  uninstallDriver,
+  runPowerShellScript
 };
