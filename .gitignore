@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build output
+release/
+dist/
+out/
+
+# Generated vendor bundle (recreated by postinstall)
+renderer/vendor/*.js
+!renderer/vendor/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Env
+.env
+.env.local
+
+# Electron-builder
+*.dmg
+*.blockmap
