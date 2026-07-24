@@ -1,6 +1,6 @@
 {
   "name": "lanmirror",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "NexaScreen - Local network screen sharing / extended display app (Host & Viewer) over LAN using Electron, Express, Socket.IO and WebRTC.",
   "main": "electron-main.js",
   "author": "NexaScreen Contributors",
