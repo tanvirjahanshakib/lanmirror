@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self';" />
+<title>NexaScreen</title>
+<link rel="stylesheet" href="common.css" />
+<link rel="stylesheet" href="launcher.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="titlebar">
+      <div class="logo-dot"></div>
+      <div class="brand">Nexa<span>Screen</span></div>
+      <div class="sub">Local network extended-display sharing</div>
+      <div class="sub" id="appVersion" style="margin-left:auto"></div>
+    </div>
+
+    <div class="launcher-body">
+      <div class="hero fade-in">
+        <h1>Turn any PC into a second screen.</h1>
+        <p>Zero cloud. Zero accounts. Pure LAN, peer-to-peer WebRTC streaming between your devices.</p>
+      </div>
+
+      <div class="mode-grid fade-in">
+        <button class="mode-card" id="hostCard">
+          <div class="mode-icon host-icon">🖥️</div>
+          <h2>Host</h2>
+          <p>Share this PC's screen to another device on your network.</p>
+          <span class="mode-cta">Start Hosting →</span>
+        </button>
+
+        <button class="mode-card" id="viewerCard">
+          <div class="mode-icon viewer-icon">📺</div>
+          <h2>Viewer</h2>
+          <p>Connect to a Host on your network and receive its screen.</p>
+          <span class="mode-cta">Open Viewer →</span>
+        </button>
+      </div>
+
+      <div class="footnote">Works only on the same Wi‑Fi / LAN &middot; No internet required</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="launcher.js"></script>
+</body>
+</html>

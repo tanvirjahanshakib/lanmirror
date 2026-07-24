@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self' ws: http: https:; media-src 'self' blob:;" />
+<title>NexaScreen — Viewer</title>
+<link rel="stylesheet" href="common.css" />
+<link rel="stylesheet" href="viewer.css" />
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <div class="titlebar" id="titlebar">
+      <button class="icon-btn" id="backBtn" title="Back">←</button>
+      <div class="logo-dot"></div>
+      <div class="brand">Nexa<span>Screen</span> <small>Viewer</small></div>
+      <div class="sub" style="margin-left:auto">
+        <span class="badge offline" id="connBadge"><span class="dot"></span>Disconnected</span>
+      </div>
+    </div>
+
+    <div class="viewer-body" id="viewerBody">
+      <div class="connect-card card fade-in" id="connectCard">
+        <h2>Connect to a Host</h2>
+        <p class="muted">Enter the IP address shown on the Host device (same Wi‑Fi/LAN required).</p>
+        <div class="form-row">
+          <label for="hostIpInput">Host IP address</label>
+          <input id="hostIpInput" type="text" placeholder="e.g. 192.168.1.24" autocomplete="off" />
+        </div>
+        <div class="form-row">
+          <label for="hostPortInput">Port</label>
+          <input id="hostPortInput" type="text" value="4500" autocomplete="off" />
+        </div>
+        <button class="btn btn-primary" id="connectBtn" style="width:100%;justify-content:center;margin-top:10px">
+          Connect
+        </button>
+        <div class="error-msg" id="errorMsg"></div>
+      </div>
+
+      <div class="stream-wrap" id="streamWrap" style="display:none">
+        <video id="remoteVideo" autoplay playsinline></video>
+        <div class="stream-overlay" id="streamOverlay">
+          <div class="spinner"></div>
+          <span id="overlayText">Waiting for host stream…</span>
+        </div>
+        <div class="stream-controls" id="streamControls">
+          <button class="icon-btn" id="fullscreenBtn" title="Toggle Fullscreen">⛶</button>
+          <button class="icon-btn" id="disconnectBtn" title="Disconnect">⏻</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="vendor/socket.io.min.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>
