@@ -5,10 +5,10 @@
   "main": "electron-main.js",
   "author": "NexaScreen Contributors",
   "license": "MIT",
-  "homepage": "https://github.com/YOUR_GITHUB_USERNAME/lanmirror",
+  "homepage": "https://tanvirjahanshakib/lanmirror",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_GITHUB_USERNAME/lanmirror.git"
+    "url": "https://github.com/tanvirjahanshakib/lanmirror.git"
   },
   "scripts": {
     "start": "electron .",
@@ -77,7 +77,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "YOUR_GITHUB_USERNAME",
+        "owner": "tanvirjahanshakib",
         "repo": "lanmirror",
         "releaseType": "release"
       }
