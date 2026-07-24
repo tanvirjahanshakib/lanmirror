@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self' ws: http: https:; media-src 'self' blob:;" />
+<title>NexaScreen — Host</title>
+<link rel="stylesheet" href="common.css" />
+<link rel="stylesheet" href="host.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="titlebar">
+      <button class="icon-btn" id="backBtn" title="Back">←</button>
+      <div class="logo-dot"></div>
+      <div class="brand">Nexa<span>Screen</span> <small>Host</small></div>
+      <div class="sub" id="serverStatusBadgeWrap">
+        <span class="badge offline" id="serverBadge"><span class="dot"></span>Server offline</span>
+      </div>
+    </div>
+
+    <div class="host-body">
+      <div class="panel-left card fade-in">
+        <h3>1. Choose what to share</h3>
+        <div class="source-grid" id="sourceGrid">
+          <div class="source-placeholder">Click "Refresh Sources" to load your screens &amp; windows.</div>
+        </div>
+        <button class="btn btn-ghost" id="refreshSourcesBtn">⟳ Refresh Sources</button>
+
+        <h3 style="margin-top:22px">2. Extend Mode <span class="badge" id="extendBadge" style="margin-left:6px">Off</span></h3>
+        <p class="extend-note">Create a virtual "Screen 2" on this PC instead of sharing a physical window — no HDMI dummy plug needed.</p>
+        <div id="extendSetupWarning" class="extend-warning" style="display:none"></div>
+        <div class="action-row" style="margin-top:0">
+          <button class="btn btn-ghost" id="extendSetupBtn">⚙ Set Up Driver</button>
+          <button class="btn btn-primary" id="extendToggleBtn" disabled>▣ Enable Extend Mode</button>
+        </div>
+
+        <h3 style="margin-top:22px">3. Connection info</h3>
+        <div class="info-row">
+          <span>Local IP</span>
+          <strong id="ipValue">—</strong>
+        </div>
+        <div class="info-row">
+          <span>Port</span>
+          <strong id="portValue">4500</strong>
+        </div>
+        <div class="info-row">
+          <span>Share this address</span>
+          <strong id="addressValue">—</strong>
+        </div>
+
+        <div class="action-row">
+          <button class="btn btn-primary" id="startBtn">▶ Start Sharing</button>
+          <button class="btn btn-danger" id="stopBtn" disabled>■ Stop Sharing</button>
+        </div>
+      </div>
+
+      <div class="panel-right card fade-in">
+        <div class="preview-wrap">
+          <video id="previewVideo" autoplay muted playsinline></video>
+          <div class="preview-empty" id="previewEmpty">
+            <div class="spinner" style="display:none" id="previewSpinner"></div>
+            <span id="previewEmptyText">No active share</span>
+          </div>
+        </div>
+
+        <div class="viewers-panel">
+          <h3>Connected Viewers <span class="badge" id="viewerCountBadge">0</span></h3>
+          <ul class="viewer-list" id="viewerList">
+            <li class="empty">No viewers connected yet.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="vendor/socket.io.min.js"></script>
+  <script src="host.js"></script>
+</body>
+</html>

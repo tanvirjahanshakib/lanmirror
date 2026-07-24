@@ -1,0 +1,31 @@
+name: Build & Publish Windows Release
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Build Windows installer + portable exe
+        run: npm run release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexascreen-windows-build
+          path: |
+            release/*.exe
+            release/*.yml
+          if-no-files-found: warn
