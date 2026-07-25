@@ -1,11 +1,11 @@
 {
   "name": "lanmirror",
- "version": "1.0.12",
+  "version": "1.0.13",
   "description": "NexaScreen - Local network screen sharing / extended display app (Host & Viewer) over LAN using Electron, Express, Socket.IO and WebRTC.",
   "main": "electron-main.js",
   "author": "NexaScreen Contributors",
   "license": "MIT",
-  "homepage": "https://tanvirjahanshakib/lanmirror",
+  "homepage": "https://github.com/tanvirjahanshakib/lanmirror",
   "repository": {
     "type": "git",
     "url": "https://github.com/tanvirjahanshakib/lanmirror.git"

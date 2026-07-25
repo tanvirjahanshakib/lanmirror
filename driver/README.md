@@ -1,52 +1,69 @@
-# /driver — Virtual Display Driver files go here
+# /driver — Virtual Display Driver setup
 
-NexaScreen's **Extend Mode** feature (`extend-mode/*.js`) controls a
-Windows Indirect Display Driver (IDD) to create a virtual "Screen 2"
-without a physical HDMI dummy plug. NexaScreen does **not** ship its own
-kernel-mode driver — writing and signing one from scratch is a separate,
-multi-week WDK project outside the scope of this app. Instead, it drives
-an existing, open-source, already-signed IDD package that you place here
-yourself.
+NexaScreen's **Extend Mode** feature (`extend-mode/*.js`) controls
+[VirtualDrivers/Virtual-Display-Driver](https://github.com/VirtualDrivers/Virtual-Display-Driver)
+to create a virtual "Screen 2" without a physical HDMI dummy plug.
+NexaScreen does **not** ship its own kernel-mode driver — it drives this
+existing, open-source, properly code-signed (SignPath.io) IDD project.
 
-## Recommended driver
+## How control actually works (important — read this)
 
-[virtual-display-rs](https://github.com/MolotovCherry/virtual-display-rs)
-by MolotovCherry — supports adding/removing virtual monitors at runtime
-via a companion control binary, with no reboot required for that part
-(only the one-time driver install + enabling Windows test-signing mode
-needs a restart).
-
-Alternatives that work with minor code changes in
-`extend-mode/virtual-monitor-control.js` (different CLI flags/IPC):
-- [Amyuni usbmmidd_v2](https://www.amyuni.com/forum/viewtopic.php?t=3113)
-- [itsmikethetech/Virtual-Display-Driver](https://github.com/itsmikethetech/Virtual-Display-Driver)
-- Microsoft's [IddSampleDriver](https://github.com/microsoft/Windows-driver-samples/tree/main/video/IndirectDisplay) (reference/sample only — needs your own signing)
+This driver does **not** expose a generic CLI with `add`/`remove` monitor
+commands. It's controlled through its official **Community Scripts**
+PowerShell collection — a single virtual display device that you
+enable/disable (not multiple independently-addressed monitors). NexaScreen
+calls these scripts via `powershell.exe -File ...`.
 
 ## What to place here
 
-Download the driver project's release and copy these into this folder
-(exact filenames depend on which driver you choose — update
-`extend-mode/driver-manager.js`'s `INF_NAME` constant and
-`extend-mode/virtual-monitor-control.js`'s `CLI_PATH` if they differ):
+1. Get the scripts from the driver's GitHub repo:
+   ```
+   https://github.com/VirtualDrivers/Virtual-Display-Driver/tree/master/Community%20Scripts
+   ```
+   Download (or `git clone` and copy) that folder's contents.
 
-```
-driver/
-├── VirtualDisplayDriver.inf   # driver install descriptor
-├── VirtualDisplayDriver.cat   # signing catalog
-├── VirtualDisplayDriver.sys   # (or .dll, depending on the driver)
-└── vdd-ctl.exe                # companion CLI used to add/remove monitors at runtime
-```
+2. Copy at least these three files into `driver/scripts/` in this
+   project:
+   ```
+   driver/scripts/
+   ├── virtual-driver-manager.ps1   # install / uninstall / status / enable / disable
+   ├── toggle-VDD.ps1                # quick enable/disable toggle (optional, not required by NexaScreen)
+   └── changeres-VDD.ps1             # sets virtual display resolution (used automatically by Extend Mode)
+   ```
 
-## Before it will work
+3. `virtual-driver-manager.ps1` may depend on the **DisplayConfig** and
+   **MonitorConfig** PowerShell modules for some actions. If Extend Mode
+   fails with a module-not-found error, run the driver project's
+   `set-dependencies.ps1` once (as admin) on the Host PC to install them:
+   ```powershell
+   Install-Module -Name DisplayConfig -RequiredVersion 1.1.1 -Force
+   Install-Module -Name MonitorConfig -RequiredVersion 1.0.3 -Force
+   ```
 
-1. **Windows test-signing mode** must be enabled (`bcdedit /set testsigning on`
-   + reboot) unless you've paid for Microsoft attestation signing —
-   NexaScreen's Host UI has a "Set Up Driver" button that walks through
-   this.
-2. Driver install (`pnputil /add-driver ... /install`) requires one-time
-   admin approval (UAC prompt) — also handled by the same button.
-3. Requires Windows 10 2004+ or Windows 11 for dynamic IDD (IddCx 1.4).
+## Already installed the driver manually (e.g. via the VDC app)?
 
-This folder is intentionally left without binaries in the repository —
-you supply them locally (or via your own CI secrets/artifact step) since
-driver redistribution licensing varies by project.
+That's fine and expected — many people install the driver once via the
+**Virtual Driver Control (VDC)** desktop app (or `winget install
+--id=VirtualDrivers.Virtual-Display-Driver -e`) before ever touching
+NexaScreen. NexaScreen's "Set Up Driver" button in Host mode detects
+whether the driver is already installed (via `virtual-driver-manager.ps1
+-Action status -Json`) and will just show "Driver Ready" if so — click
+the **⟳ refresh** button next to it if the status looks stale.
+
+## Before Extend Mode will work
+
+1. The scripts above must be present in `driver/scripts/`.
+2. The driver itself must be installed (either by NexaScreen's "Install
+   Driver" button, or manually via the VDC app / winget — both are fine).
+3. Windows 10 2004+ or Windows 11.
+4. Test-signing mode is **not required** for typical x64 systems with
+   this driver (it's properly signed). Only some ARM64 + Windows 11
+   24H2+ configurations may need it — see the driver project's own docs
+   if that applies to your setup.
+
+## Why this folder ships empty
+
+Driver/script redistribution and versioning is the upstream project's
+call, not NexaScreen's — you fetch the current release/scripts yourself
+so you always get the latest signed build rather than a copy that could
+go stale or fall out of sync with what Windows will actually trust.

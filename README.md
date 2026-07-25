@@ -87,11 +87,11 @@ NexaScreen/
 ├── server/
 │   └── server.js             # Express + Socket.IO signaling server
 ├── extend-mode/
-│   ├── driver-manager.js     # Install/uninstall the virtual display driver, test-signing mode
-│   ├── virtual-monitor-control.js  # Add/remove virtual monitors at runtime (no reboot)
+│   ├── driver-manager.js     # Driver install/status via virtual-driver-manager.ps1
+│   ├── virtual-monitor-control.js  # Enable/disable the virtual display + set resolution
 │   └── display-detector.js   # Diffs screen.getAllDisplays() to find the new virtual screen
 ├── driver/
-│   └── README.md             # What driver files to place here (user-supplied, not bundled in repo)
+│   └── README.md             # What driver + Community Scripts to place here (user-supplied)
 ├── renderer/
 │   ├── common.css            # Shared dark theme design system
 │   ├── launcher.html/.css/.js   # Host/Viewer mode selector
@@ -118,7 +118,7 @@ NexaScreen/
 ### Setup
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/lanmirror.git
+git clone https://github.com/tanvirjahanshakib/lanmirror.git
 cd lanmirror
 npm install
 ```
@@ -208,37 +208,41 @@ design — portable apps are typically re-downloaded manually); the
 Extend Mode lets the Host create a **virtual monitor** on Windows and
 share *that* instead of a physical window — giving you a real second-
 screen experience without a physical HDMI dummy plug. It's driven by
-`extend-mode/*.js` in the main process, which controls a bundled Windows
-Indirect Display Driver (IDD).
+`extend-mode/*.js` in the main process, which controls
+[VirtualDrivers/Virtual-Display-Driver](https://github.com/VirtualDrivers/Virtual-Display-Driver)
+via its official PowerShell "Community Scripts".
 
-**This requires a one-time setup per Host PC:**
+**One-time setup per Host PC:**
 
-1. Download a supported virtual display driver release (recommended:
-   [virtual-display-rs](https://github.com/MolotovCherry/virtual-display-rs))
-   and place its files in `/driver` — see `driver/README.md` for the
-   exact file layout.
-2. Launch NexaScreen → Host → in the **"Extend Mode"** section, click
-   **"Set Up Driver"**. This walks through, in order:
-   - Installing the driver (one UAC prompt)
-   - Enabling Windows test-signing mode if needed (one UAC prompt + a
-     **restart** — unsigned/test-signed IDD drivers won't load without
-     this, unless you've paid for Microsoft attestation signing)
-3. After the restart, reopen NexaScreen → Host → click **"Enable Extend
-   Mode"**. A virtual "Screen 2" appears (visible in Windows Display
-   Settings too), and NexaScreen automatically selects it as the share
-   source — click **Start Sharing** as usual.
-4. Click **"Disable Extend Mode"** when done to remove the virtual
-   monitor cleanly (also happens automatically if you quit the app).
+1. Install the driver itself — either let NexaScreen do it (Host →
+   Extend Mode → "Install Driver") or install it yourself first via:
+   ```powershell
+   winget install --id=VirtualDrivers.Virtual-Display-Driver -e
+   ```
+   or the **Virtual Driver Control (VDC)** app it installs. This driver
+   is properly code-signed (SignPath.io), so no Windows test-signing
+   mode or reboot is needed on typical x64 systems.
+2. Download the driver project's
+   [Community Scripts](https://github.com/VirtualDrivers/Virtual-Display-Driver/tree/master/Community%20Scripts)
+   folder and copy its `.ps1` files into `driver/scripts/` in this
+   project — see `driver/README.md` for exactly which files.
+3. Launch NexaScreen → Host → **Extend Mode** section: click **⟳** to
+   refresh status; if the driver's already installed it'll show "Driver
+   Ready" right away.
+4. Click **"Enable Extend Mode"**. A virtual "Screen 2" appears (visible
+   in Windows Display Settings too), and NexaScreen automatically
+   selects it as the share source — click **Start Sharing** as usual.
+5. Click **"Disable Extend Mode"** when done (also happens automatically
+   on quit).
 
-**Requirements:** Windows 10 (2004+) or Windows 11, for dynamic IDD
-(IddCx 1.4) support.
+**Requirements:** Windows 10 (2004+) or Windows 11.
 
-**Why this can't be fully automatic:** Windows requires either
-test-signing mode or a paid Microsoft attestation-signed driver before
-any IDD will load — there's no way around a restart and a UAC prompt for
-the initial setup, by design of the OS. Everything downstream of that
-(adding/removing the virtual monitor per session) is instant and needs
-no elevation.
+**Why NexaScreen doesn't bundle a driver itself:** writing and signing a
+Windows kernel-mode driver from scratch is a separate, multi-week
+project outside an Electron app's scope — and an unsigned/self-signed
+one would either refuse to load or need test-signing mode enabled.
+Driving an existing, properly-signed, actively-maintained driver project
+is both safer and far less work to keep working across Windows updates.
 
 ---
 

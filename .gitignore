@@ -29,6 +29,9 @@ desktop.ini
 .env
 .env.local
 
+# User-supplied virtual display driver control scripts (see driver/README.md)
+driver/scripts/
+
 # Electron-builder
 *.dmg
 *.blockmap

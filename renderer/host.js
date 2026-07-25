@@ -39,6 +39,7 @@ const el = {
   extendBadge: document.getElementById('extendBadge'),
   extendSetupWarning: document.getElementById('extendSetupWarning'),
   extendSetupBtn: document.getElementById('extendSetupBtn'),
+  extendRefreshBtn: document.getElementById('extendRefreshBtn'),
   extendToggleBtn: document.getElementById('extendToggleBtn')
 };
 
@@ -304,30 +305,21 @@ async function refreshExtendStatus() {
   el.extendBadge.textContent = status.active ? 'Active' : 'Off';
   el.extendBadge.className = `badge ${status.active ? 'online' : ''}`;
 
-  if (!status.filesPresent) {
+  if (!status.scriptsPresent) {
     el.extendSetupWarning.style.display = 'block';
     el.extendSetupWarning.textContent =
-      'Driver files not found. Download the virtual display driver release and place it in the app\'s /driver resource folder (see README).';
+      'Driver control scripts not found. Copy the "Community Scripts" folder from the driver release into /driver/scripts (see README).';
     el.extendSetupBtn.textContent = '⚙ Set Up Driver';
     el.extendSetupBtn.disabled = true;
     el.extendToggleBtn.disabled = true;
     return;
   }
 
-  if (!status.driverInstalled) {
-    el.extendSetupWarning.style.display = 'block';
-    el.extendSetupWarning.textContent = 'Driver found but not installed yet. This needs a one-time admin approval.';
-    el.extendSetupBtn.textContent = '⚙ Install Driver (Admin)';
-    el.extendSetupBtn.disabled = false;
-    el.extendToggleBtn.disabled = true;
-    return;
-  }
-
-  if (!status.testSigningEnabled) {
+  if (!status.installed) {
     el.extendSetupWarning.style.display = 'block';
     el.extendSetupWarning.textContent =
-      'Windows test-signing mode is off, so the driver can\'t load. Enabling it requires a restart.';
-    el.extendSetupBtn.textContent = '⚙ Enable Test-Signing (Admin + Restart)';
+      'Driver not installed yet (or already installed manually via the VDC app — click Refresh if you just did).';
+    el.extendSetupBtn.textContent = '⚙ Install Driver (Admin)';
     el.extendSetupBtn.disabled = false;
     el.extendToggleBtn.disabled = true;
     return;
@@ -342,16 +334,9 @@ async function refreshExtendStatus() {
 async function runExtendSetupStep() {
   el.extendSetupBtn.disabled = true;
   try {
-    const status = await window.nexa.extendModeStatus();
-    if (status.filesPresent && !status.driverInstalled) {
-      const result = await window.nexa.extendModeInstallDriver();
-      if (!result.ok) throw new Error(result.error);
-      showToast('Driver installed.', 'success');
-    } else if (status.driverInstalled && !status.testSigningEnabled) {
-      const result = await window.nexa.extendModeEnableTestSigning();
-      if (!result.ok) throw new Error(result.error);
-      showToast('Test-signing enabled. Please restart your PC, then reopen NexaScreen.', 'success');
-    }
+    const result = await window.nexa.extendModeInstallDriver();
+    if (!result.ok) throw new Error(result.error);
+    showToast('Driver installed.', 'success');
   } catch (err) {
     showToast('Setup step failed: ' + err.message, 'error');
   } finally {
@@ -396,6 +381,7 @@ el.refreshBtn.addEventListener('click', loadSources);
 el.startBtn.addEventListener('click', startSharing);
 el.stopBtn.addEventListener('click', stopSharing);
 el.extendSetupBtn.addEventListener('click', runExtendSetupStep);
+el.extendRefreshBtn.addEventListener('click', refreshExtendStatus);
 el.extendToggleBtn.addEventListener('click', toggleExtendMode);
 el.backBtn.addEventListener('click', async () => {
   if (state.sharing) await stopSharing();

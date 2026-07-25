@@ -32,7 +32,7 @@ const displayDetector = require('./extend-mode/display-detector');
 // -------------------------------------------------------------------------
 let mainWindow = null;
 let activeServerInstance = null; // { httpServer, io, port }
-let extendModeMonitorId = null; // driver-assigned id of the active virtual monitor, if any
+let extendModeMonitorId = null; // truthy flag while Extend Mode's virtual display is active (this driver has one single device, not per-monitor IDs)
 const DEFAULT_PORT = 4500;
 
 autoUpdater.logger = log;
@@ -108,7 +108,7 @@ app.on('window-all-closed', () => {
   if (activeServerInstance) stopServer(activeServerInstance);
   if (extendModeMonitorId) {
     // Best-effort: don't block quit on this.
-    monitorControl.removeVirtualMonitor(extendModeMonitorId).catch(() => {});
+    monitorControl.disableVirtualDisplay().catch(() => {});
   }
   if (process.platform !== 'darwin') app.quit();
 });
@@ -215,31 +215,12 @@ ipcMain.handle('nexa:navigate', (_event, viewName) => {
 });
 
 // -------------------------------------------------------------------------
-// Extend Mode (virtual "Screen 2" via bundled Indirect Display Driver)
+// Extend Mode (virtual "Screen 2" via VirtualDrivers/Virtual-Display-Driver)
 // -------------------------------------------------------------------------
 
 ipcMain.handle('nexa:extend-mode-status', async () => {
-  const [filesPresent, driverInstalled, testSigning] = await Promise.all([
-    Promise.resolve(driverManager.driverFilesPresent()),
-    driverManager.isDriverInstalled(),
-    driverManager.isTestSigningEnabled()
-  ]);
-  return {
-    filesPresent,
-    driverInstalled,
-    testSigningEnabled: testSigning,
-    active: !!extendModeMonitorId
-  };
-});
-
-ipcMain.handle('nexa:extend-mode-enable-test-signing', async () => {
-  try {
-    await driverManager.enableTestSigning();
-    return { ok: true, rebootRequired: true };
-  } catch (err) {
-    log.error('enableTestSigning failed', err);
-    return { ok: false, error: err.message };
-  }
+  const status = await driverManager.getDriverStatus();
+  return { ...status, active: !!extendModeMonitorId };
 });
 
 ipcMain.handle('nexa:extend-mode-install-driver', async () => {
@@ -258,18 +239,19 @@ ipcMain.handle('nexa:extend-mode-enable', async (_event, opts) => {
   }
   try {
     const before = displayDetector.snapshotDisplayIds();
-    const monitorId = await monitorControl.addVirtualMonitor({
+    await monitorControl.enableVirtualDisplay({
       width: (opts && opts.width) || 1920,
-      height: (opts && opts.height) || 1080,
-      refreshHz: (opts && opts.refreshHz) || 60
+      height: (opts && opts.height) || 1080
     });
     const newDisplay = await displayDetector.findNewDisplay(before);
     if (!newDisplay) {
-      await monitorControl.removeVirtualMonitor(monitorId).catch(() => {});
-      return { ok: false, error: 'Virtual display did not appear. Is the driver installed and test-signing enabled?' };
+      return {
+        ok: false,
+        error: 'Virtual display did not appear. Confirm it\'s installed via the VDC app and try again.'
+      };
     }
-    extendModeMonitorId = monitorId;
-    return { ok: true, monitorId, displayId: newDisplay.id, bounds: newDisplay.bounds };
+    extendModeMonitorId = 'active'; // single-device model - just a flag, no per-monitor id
+    return { ok: true, displayId: newDisplay.id, bounds: newDisplay.bounds };
   } catch (err) {
     log.error('extend-mode-enable failed', err);
     return { ok: false, error: err.message };
@@ -279,7 +261,7 @@ ipcMain.handle('nexa:extend-mode-enable', async (_event, opts) => {
 ipcMain.handle('nexa:extend-mode-disable', async () => {
   if (!extendModeMonitorId) return { ok: true };
   try {
-    await monitorControl.removeVirtualMonitor(extendModeMonitorId);
+    await monitorControl.disableVirtualDisplay();
     extendModeMonitorId = null;
     return { ok: true };
   } catch (err) {

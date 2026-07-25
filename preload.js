@@ -22,7 +22,6 @@ const VALID_INVOKE_CHANNELS = [
   'nexa:get-app-version',
   'nexa:navigate',
   'nexa:extend-mode-status',
-  'nexa:extend-mode-enable-test-signing',
   'nexa:extend-mode-install-driver',
   'nexa:extend-mode-enable',
   'nexa:extend-mode-disable',
@@ -55,7 +54,6 @@ contextBridge.exposeInMainWorld('nexa', {
   navigate: (view) => safeInvoke('nexa:navigate', view),
 
   extendModeStatus: () => safeInvoke('nexa:extend-mode-status'),
-  extendModeEnableTestSigning: () => safeInvoke('nexa:extend-mode-enable-test-signing'),
   extendModeInstallDriver: () => safeInvoke('nexa:extend-mode-install-driver'),
   extendModeEnable: (opts) => safeInvoke('nexa:extend-mode-enable', opts),
   extendModeDisable: () => safeInvoke('nexa:extend-mode-disable'),
