@@ -318,7 +318,9 @@ async function refreshExtendStatus() {
   if (!status.installed) {
     el.extendSetupWarning.style.display = 'block';
     el.extendSetupWarning.textContent =
-      'Driver not installed yet (or already installed manually via the VDC app — click Refresh if you just did).';
+      'Driver not installed yet (or already installed manually via the VDC app — click Refresh if you just did).' +
+      (status.rawOutput ? ` [debug: script said "${status.rawOutput.slice(0, 200)}"]` : '') +
+      (status.error ? ` [error: ${status.error}]` : '');
     el.extendSetupBtn.textContent = '⚙ Install Driver (Admin)';
     el.extendSetupBtn.disabled = false;
     el.extendToggleBtn.disabled = true;
