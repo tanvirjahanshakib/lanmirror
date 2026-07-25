@@ -1,0 +1,86 @@
+{
+  "name": "lanmirror",
+  "version": "1.0.20",
+  "description": "NexaScreen - Local network screen sharing / extended display app (Host & Viewer) over LAN using Electron, Express, Socket.IO and WebRTC.",
+  "main": "electron-main.js",
+  "author": "NexaScreen Contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/tanvirjahanshakib/lanmirror",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tanvirjahanshakib/lanmirror.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "postinstall": "electron-builder install-app-deps && node scripts/copy-vendor.js",
+    "build:win": "electron-builder --win --x64",
+    "dist": "electron-builder --win --x64 --publish never",
+    "release": "electron-builder --win --x64 --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.8",
+    "electron-log": "^5.1.1",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "socket.io-client": "^4.7.5",
+    "sudo-prompt": "^9.2.1"
+  },
+  "devDependencies": {
+    "electron": "^30.0.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.nexascreen.app",
+    "productName": "NexaScreen",
+    "copyright": "Copyright © 2025 NexaScreen Contributors",
+    "asar": true,
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron-main.js",
+      "preload.js",
+      "server/**/*",
+      "renderer/**/*",
+      "extend-mode/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "driver", "to": "driver", "filter": ["**/*"] }
+    ],
+    "extraMetadata": {
+      "main": "electron-main.js"
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NexaScreen",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "tanvirjahanshakib",
+        "repo": "lanmirror",
+        "releaseType": "release"
+      }
+    ]
+  }
+}
