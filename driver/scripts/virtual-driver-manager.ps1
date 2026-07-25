@@ -74,6 +74,7 @@ function Write-Log {
         [string]$Status = 'Info',
         [string]$Color = 'Cyan'
     )
+    Write-DebugLog "$Status : $Message"
 
     if ($Json.IsPresent) {
         $logObject = [PSCustomObject]@{
@@ -137,6 +138,16 @@ if (-Not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     # The script must re-launch itself as an Administrator to function.
     # We must rebuild the argument list to pass all original parameters to the new elevated process.
     $psArgs = @("-ExecutionPolicy", "Bypass", "-NoProfile", "-File", "`"$($MyInvocation.MyCommand.Path)`"")
+    $psArgs += "-Verbose"
+$psArgs += "-NoExit"
+
+Write-DebugLog "Launching elevated PowerShell..."
+Write-DebugLog ($psArgs -join " ")
+    $psArgs += "-Verbose"
+$psArgs += "-NoExit"
+
+Write-DebugLog "Launching elevated PowerShell..."
+Write-DebugLog ($psArgs -join " ")
 
     foreach ($key in $PSBoundParameters.Keys) {
         $psArgs += "-$key"
@@ -148,12 +159,18 @@ if (-Not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     }
 
     Write-Verbose "Re-launching with arguments: $($psArgs -join ' ')"
+    Write-DebugLog "========================================"
+Write-DebugLog "Launching elevated PowerShell..."
+Write-DebugLog "Arguments:"
+Write-DebugLog ($psArgs -join " ")
+Write-DebugLog "========================================"
 
     # Start the new process with the 'Runas' verb to trigger the UAC elevation prompt.
     $elevatedProcess = Start-Process "powershell.exe" -ArgumentList $psArgs -Verb Runas -Wait -PassThru
 
     # Pass the exit code from the elevated process back to the original caller.
     $ActionTitleCase = (Get-Culture).TextInfo.ToTitleCase($Action)
+    Write-DebugLog "Elevated Process ExitCode = $($elevatedProcess.ExitCode)"
     if ($elevatedProcess.ExitCode -eq 0) { Write-Log -Message "$ActionTitleCase Succeeded." -Status 'Success' }
     else { Write-Log -Message "$ActionTitleCase Failed. See the elevated window for details." -Status 'Error' }
     exit $elevatedProcess.ExitCode
@@ -269,9 +286,28 @@ try {
         # Use the hash to ensure the DevCon-Installer utility downloads the correct, secure version of DevCon.
         $devconArgs = "install -hash $devconHash -update -dir `"$tempDir`""
         Write-Verbose "Running DevCon Installer with arguments: $devconArgs"
+        Write-DebugLog "========================================"
+Write-DebugLog "Starting DevCon Installer"
+Write-DebugLog "Installer Path : $devconInstallerPath"
+Write-DebugLog "Arguments      : $devconArgs"
+
+if (Test-Path $devconInstallerPath) {
+    Write-DebugLog "DevCon Installer EXISTS"
+}
+else {
+    Write-DebugLog "ERROR: DevCon Installer NOT FOUND"
+}
         Start-Process -FilePath $devconInstallerPath -ArgumentList $devconArgs -Wait -NoNewWindow
         
         $devconExe = Join-Path $tempDir "devcon.exe"
+        Write-DebugLog "Checking devcon.exe..."
+
+if (Test-Path $devconExe) {
+    Write-DebugLog "SUCCESS: devcon.exe FOUND"
+}
+else {
+    Write-DebugLog "ERROR: devcon.exe NOT FOUND"
+}
         if (-not (Test-Path $devconExe)) { throw "Failed to acquire devcon.exe." }
         Write-Verbose "devcon.exe acquired successfully at $devconExe"
 
@@ -304,10 +340,38 @@ try {
             
             Write-Verbose "Downloading driver from URL: $downloadUrl"
             $driverZipPath = Join-Path $tempDir "driver.zip"
+            Write-DebugLog "========================================"
+Write-DebugLog "Downloading Virtual Display Driver"
+Write-DebugLog "URL : $downloadUrl"
+Write-DebugLog "ZIP : $driverZipPath"
             Invoke-WebRequest -Uri $downloadUrl -OutFile $driverZipPath
+            Write-DebugLog "========================================"
+Write-DebugLog "Downloading Virtual Display Driver"
+Write-DebugLog "URL : $downloadUrl"
+Write-DebugLog "ZIP : $driverZipPath"
+
+Invoke-WebRequest -Uri $downloadUrl -OutFile $driverZipPath
+
+if (Test-Path $driverZipPath) {
+    Write-DebugLog "SUCCESS: Driver ZIP downloaded"
+
+    $size = (Get-Item $driverZipPath).Length
+
+    Write-DebugLog "ZIP Size : $size bytes"
+}
+else {
+    Write-DebugLog "ERROR: Driver ZIP download failed"
+}
             Write-Verbose "Driver ZIP file downloaded to $driverZipPath"
             
             Expand-Archive -Path $driverZipPath -DestinationPath $tempDir -Force
+            Write-DebugLog "Driver ZIP extracted"
+
+Write-DebugLog "Files inside temp directory:"
+
+Get-ChildItem $tempDir -Recurse | ForEach-Object {
+    Write-DebugLog $_.FullName
+}
             Write-Verbose "Driver archive expanded."
 
             # Use DevCon to install the driver by pointing to its INF file and specifying its unique Hardware ID.
